@@ -290,7 +290,7 @@ func (s *SSEServer) Shutdown(ctx context.Context) error {
 			if session, ok := value.(*sseSession); ok {
 				close(session.done)
 			}
-			s.sessions.Delete(key)
+			s.sessions.LoadAndDelete(key)
 			return true
 		})
 
@@ -328,8 +328,8 @@ func (s *SSEServer) handleSSE(w http.ResponseWriter, r *http.Request) {
 		notificationChannel: make(chan mcp.JSONRPCNotification, 100),
 	}
 
-	s.sessions.Store(sessionID, session)
-	defer s.sessions.Delete(sessionID)
+	s.sessions.LoadOrStore(sessionID, session)
+	defer s.sessions.LoadAndDelete(sessionID)
 
 	if err := s.server.RegisterSession(r.Context(), session); err != nil {
 		http.Error(w, fmt.Sprintf("Session registration failed: %v", err), http.StatusInternalServerError)
