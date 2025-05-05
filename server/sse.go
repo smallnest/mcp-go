@@ -98,7 +98,7 @@ type SSEServer struct {
 	useFullURLForMessageEndpoint bool
 	messageEndpoint              string
 	sseEndpoint                  string
-	sessions                     sync.Map
+	sessions                     SessionStore
 	srv                          *http.Server
 	contextFunc                  SSEContextFunc
 	dynamicBasePathFunc          DynamicBasePathFunc
@@ -237,6 +237,7 @@ func NewSSEServer(server *MCPServer, opts ...SSEOption) *SSEServer {
 		useFullURLForMessageEndpoint: true,
 		keepAlive:                    false,
 		keepAliveInterval:            10 * time.Second,
+		sessions:                     &localSessionStore{},
 	}
 
 	// Apply all options
@@ -286,7 +287,7 @@ func (s *SSEServer) Shutdown(ctx context.Context) error {
 	s.mu.RUnlock()
 
 	if srv != nil {
-		s.sessions.Range(func(key, value interface{}) bool {
+		s.sessions.Range(func(key string, value ClientSession) bool {
 			if session, ok := value.(*sseSession); ok {
 				close(session.done)
 			}

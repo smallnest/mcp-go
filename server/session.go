@@ -91,7 +91,7 @@ func (s *MCPServer) SendNotificationToAllClients(
 		},
 	}
 
-	s.sessions.Range(func(k, v any) bool {
+	s.sessions.Range(func(k string, v ClientSession) bool {
 		if session, ok := v.(ClientSession); ok && session.Initialized() {
 			select {
 			case session.NotificationChannel() <- notification:
