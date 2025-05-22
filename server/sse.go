@@ -239,6 +239,13 @@ func WithSSEContextFunc(fn SSEContextFunc) SSEOption {
 	}
 }
 
+// WithSessionStore sets the session store for the SSE server.
+func WithSessionStore(store SessionStore) SSEOption {
+	return func(s *SSEServer) {
+		s.sessions = store
+	}
+}
+
 // NewSSEServer creates a new SSE server instance with the given MCP server and options.
 func NewSSEServer(server *MCPServer, opts ...SSEOption) *SSEServer {
 	s := &SSEServer{
