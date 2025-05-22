@@ -109,7 +109,7 @@ type SSEServer struct {
 	useFullURLForMessageEndpoint bool
 	messageEndpoint              string
 	sseEndpoint                  string
-	sessions                     sync.Map
+	sessions                     SessionStore
 	srv                          *http.Server
 	contextFunc                  SSEContextFunc
 	dynamicBasePathFunc          DynamicBasePathFunc
@@ -248,6 +248,7 @@ func NewSSEServer(server *MCPServer, opts ...SSEOption) *SSEServer {
 		useFullURLForMessageEndpoint: true,
 		keepAlive:                    false,
 		keepAliveInterval:            10 * time.Second,
+		sessions:                     &localSessionStore{},
 	}
 
 	// Apply all options
@@ -297,11 +298,14 @@ func (s *SSEServer) Shutdown(ctx context.Context) error {
 	s.mu.RUnlock()
 
 	if srv != nil {
-		s.sessions.Range(func(key, value any) bool {
+		s.sessions.Range(func(key string, value ClientSession) bool {
 			if session, ok := value.(*sseSession); ok {
 				close(session.done)
 			}
-			s.sessions.Delete(key)
+
+			// TODO: session storage must set expire for sessions
+			// s.sessions.LoadAndDelete(key)
+
 			return true
 		})
 
@@ -337,8 +341,8 @@ func (s *SSEServer) handleSSE(w http.ResponseWriter, r *http.Request) {
 		notificationChannel: make(chan mcp.JSONRPCNotification, 100),
 	}
 
-	s.sessions.Store(sessionID, session)
-	defer s.sessions.Delete(sessionID)
+	s.sessions.LoadOrStore(sessionID, session)
+	defer s.sessions.LoadAndDelete(sessionID)
 
 	if err := s.server.RegisterSession(r.Context(), session); err != nil {
 		http.Error(
